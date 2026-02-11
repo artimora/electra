@@ -1,5 +1,5 @@
 {
-	"name": "electra-testing",
+	"name": "client-testing",
 	"module": "src/index.ts",
 	"type": "module",
 	"devDependencies": {

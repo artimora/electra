@@ -1,0 +1,17 @@
+{
+	"name": "server-testing",
+	"module": "src/index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@artimora/electra": "workspace:*"
+	},
+	"scripts": {
+		"dev": "bun --bun run index.ts"
+	}
+}
