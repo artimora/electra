@@ -11,4 +11,13 @@ export class WebSocketsNetworkingLayer implements NetworkLayer {
 	startServer(client: ClientInitializationOptions): Promise<void> {
 		throw new Error("Method not implemented.");
 	}
+	send(data: Uint8Array): Promise<void> {
+		throw new Error("Method not implemented.");
+	}
+	sendToClient(clientId: number, data: Uint8Array): Promise<void> {
+		throw new Error("Method not implemented.");
+	}
+	getClients(): number[] {
+		throw new Error("Method not implemented.");
+	}
 }
