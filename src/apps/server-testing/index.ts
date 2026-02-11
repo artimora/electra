@@ -1,3 +1,6 @@
-import { test } from "@artimora/electra";
+import { ElectraServer, TCPNetworkingLayer } from "@artimora/electra";
 
-test();
+const server = new ElectraServer({
+	networkingLayer: new TCPNetworkingLayer(),
+	port: 8080,
+});
