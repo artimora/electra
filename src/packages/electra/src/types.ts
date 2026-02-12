@@ -1,12 +1,7 @@
 import type net from "node:net";
 export type NetworkLayerState = "server" | "client" | "disconnected";
 
-export type NetworkLayer =
-	| (BaseNetworkLayer & { getState(): "disconnected" })
-	| (BaseNetworkLayer & { getState(): "server" })
-	| (BaseNetworkLayer & { getState(): "client" });
-
-export interface BaseNetworkLayer {
+export interface NetworkLayer {
 	getState(): NetworkLayerState;
 	send(data: Uint8Array): void;
 	stop(): void;

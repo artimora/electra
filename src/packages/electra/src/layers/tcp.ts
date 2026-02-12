@@ -1,12 +1,12 @@
 import net from "node:net";
 import type {
-	BaseNetworkLayer,
 	ClientInitializationOptions,
+	NetworkLayer,
 	NetworkLayerState,
 	ServerInitializationOptions,
 } from "@/types";
 
-export class TCPNetworkingLayer implements BaseNetworkLayer {
+export class TCPNetworkingLayer implements NetworkLayer {
 	private currentState: NetworkLayerState = "disconnected";
 
 	// server
@@ -15,6 +15,9 @@ export class TCPNetworkingLayer implements BaseNetworkLayer {
 
 	// client
 	private socket?: net.Socket | undefined;
+
+	// generic
+	private sendQueue: Uint8Array[] = [];
 
 	getState(): NetworkLayerState {
 		return this.currentState;
@@ -44,6 +47,11 @@ export class TCPNetworkingLayer implements BaseNetworkLayer {
 		this.server.listen(options.port, () => {
 			this.currentState = "server";
 			console.log(`Server listening on port ${options.port}`);
+
+			for (const data of this.sendQueue) {
+				this.send(data);
+			}
+			this.sendQueue = [];
 		});
 
 		this.server.on("error", (err) => {
@@ -61,6 +69,11 @@ export class TCPNetworkingLayer implements BaseNetworkLayer {
 		this.socket.connect(options.port, options.host, () => {
 			this.currentState = "client";
 			console.log(`Connected to ${options.host}:${options.port}`);
+
+			for (const data of this.sendQueue) {
+				this.send(data);
+			}
+			this.sendQueue = [];
 		});
 
 		this.socket.on("data", (data) => {
@@ -89,7 +102,12 @@ export class TCPNetworkingLayer implements BaseNetworkLayer {
 			return;
 		}
 
-		throw new Error("Cannot send: not connected.");
+		if (this.currentState === "disconnected") {
+			this.sendQueue.push(data);
+			return;
+		}
+
+		throw new Error("Cannot send.");
 	}
 
 	sendToClient(clientId: number, data: Uint8Array): void {
