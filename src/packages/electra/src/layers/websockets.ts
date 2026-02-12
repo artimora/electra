@@ -1,14 +1,21 @@
+import type net from "node:net";
 import type {
+	BaseNetworkLayer,
 	ClientInitializationOptions,
-	NetworkLayer,
 	ServerInitializationOptions,
-} from ".";
+} from "@/types";
 
-export class WebSocketsNetworkingLayer implements NetworkLayer {
-	startClient(server: ServerInitializationOptions): Promise<void> {
+export class WebSocketsNetworkingLayer implements BaseNetworkLayer {
+	stop(): void {
 		throw new Error("Method not implemented.");
 	}
-	startServer(client: ClientInitializationOptions): Promise<void> {
+	getState(): "server" | "client" | "disconnected" {
+		throw new Error("Method not implemented.");
+	}
+	startServer(server: ServerInitializationOptions): Promise<void> {
+		throw new Error("Method not implemented.");
+	}
+	startClient(client: ClientInitializationOptions): Promise<void> {
 		throw new Error("Method not implemented.");
 	}
 	send(data: Uint8Array): Promise<void> {
@@ -17,7 +24,7 @@ export class WebSocketsNetworkingLayer implements NetworkLayer {
 	sendToClient(clientId: number, data: Uint8Array): Promise<void> {
 		throw new Error("Method not implemented.");
 	}
-	getClients(): number[] {
+	getClients(): net.Socket[] {
 		throw new Error("Method not implemented.");
 	}
 }

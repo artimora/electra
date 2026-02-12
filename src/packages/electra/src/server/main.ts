@@ -1,4 +1,4 @@
-import type { NetworkLayer, ServerInitializationOptions } from "@/layers";
+import type { NetworkLayer, ServerInitializationOptions } from "@/types";
 
 export class ElectraServer {
 	constructor(
