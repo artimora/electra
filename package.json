@@ -11,5 +11,9 @@
 	"workspaces": [
 		"src/apps/*",
 		"src/packages/*"
-	]
+	],
+	"scripts": {
+		"build": "cd src/packages/electra && bun run build",
+		"dev": "cd src/packages/electra && bun run dev"
+	}
 }
