@@ -12,8 +12,9 @@
 		"**/.next": true,
 		"**/next-env.d.ts": true,
 		"**/tsconfig.tsbuildinfo": true,
-		"**/cloudflare-env.d.ts": true
-		// "**/.wrangler": true
+		"**/cloudflare-env.d.ts": true,
+		"src/packages/**/License.txt": true,
+		"src/packages/**/README.md": true
 	},
 	"editor.defaultFormatter": "biomejs.biome",
 	"[javascript][typescript][javascriptreact][typescriptreact][json][jsonc][css][graphql]": {

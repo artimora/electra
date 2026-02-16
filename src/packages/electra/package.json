@@ -1,5 +1,7 @@
 {
 	"name": "@artimora/electra",
+	"description": "simple (and thin) message based networking library",
+	"version": "1.0.0",
 	"type": "module",
 	"files": [
 		"dist"
@@ -25,5 +27,20 @@
 	"scripts": {
 		"dev": "bunup --exports --watch --external bun",
 		"build": "bunup --exports --external bun"
+	},
+	"author": {
+		"name": "copperdevs",
+		"url": "https://github.com/copperdevs",
+		"email": "me@copperdevs.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/artimora/electra#"
+	},
+	"bugs": "https://github.com/artimora/electra/issues",
+	"homepage": "https://github.com/artimora/electra",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
 	}
 }
