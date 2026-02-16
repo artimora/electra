@@ -12,6 +12,6 @@
 		"@artimora/electra": "workspace:*"
 	},
 	"scripts": {
-		"dev": "bun --bun run index.ts"
+		"dev": "bun --bun run src/index.ts"
 	}
 }
