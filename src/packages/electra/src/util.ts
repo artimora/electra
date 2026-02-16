@@ -1,6 +1,6 @@
-type ActionCallback<T> = (value: T) => void;
+type ActionCallback<T> = T extends void ? () => void : (value: T) => void;
 
-export class Action<T> {
+export class Action<T = void> {
 	private callbacks = new Set<ActionCallback<T>>();
 
 	public add(callback: ActionCallback<T>): void {
@@ -11,9 +11,9 @@ export class Action<T> {
 		this.callbacks.delete(callback);
 	}
 
-	public invoke(value: T): void {
+	public invoke(...args: T extends void ? [] : [value: T]): void {
 		for (const callback of this.callbacks) {
-			callback(value);
+			(callback as any)(...args);
 		}
 	}
 }

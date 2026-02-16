@@ -13,6 +13,8 @@ export interface NetworkLayer {
 	getClients(): net.Socket[];
 
 	setOnMessage(handler?: RawMessageHandler): void;
+	setOnConnection(handler?: ConnectionHandler): void;
+	setOnDisconnect(handler?: ConnectionHandler): void;
 }
 
 export type ServerInitializationOptions = {
@@ -35,5 +37,12 @@ export type Message = {
 
 export type RawMessageHandler = (
 	payload: Uint8Array,
-	meta: { side: "server" | "client"; clientId?: number },
+	meta: HandlerMetaData,
 ) => void;
+
+export type ConnectionHandler = (meta: HandlerMetaData) => void;
+
+export type HandlerMetaData = {
+	side: "server" | "client";
+	clientId?: number | undefined;
+};

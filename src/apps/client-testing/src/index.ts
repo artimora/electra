@@ -12,6 +12,14 @@ client.onMessage.add((message) => {
 	console.log("Received message:", message);
 });
 
+client.onConnection.add(() => {
+	console.log("Connected to server");
+});
+
+client.onDisconnect.add(() => {
+	console.log("Disconnected from server");
+});
+
 while (true) {
 	client.send({
 		id: "testing:time",

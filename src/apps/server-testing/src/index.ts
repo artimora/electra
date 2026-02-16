@@ -13,6 +13,14 @@ server.onMessage.add((message) => {
 	);
 });
 
+server.onClientConnect.add((clientId) => {
+	console.log("Client connected:", clientId);
+});
+
+server.onClientDisconnect.add((clientId) => {
+	console.log("Client disconnected:", clientId);
+});
+
 while (true) {
 	server.sendToAllClients({
 		id: "testing:time",

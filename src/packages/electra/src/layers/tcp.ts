@@ -1,6 +1,7 @@
 import net from "node:net";
 import type {
 	ClientInitializationOptions,
+	ConnectionHandler,
 	NetworkLayer,
 	NetworkLayerState,
 	RawMessageHandler,
@@ -26,6 +27,8 @@ export class TCPNetworkingLayer implements NetworkLayer {
 
 	// inbound "push up"
 	private onMessage?: RawMessageHandler | undefined;
+	private onConnection?: ConnectionHandler | undefined;
+	private onDisconnect?: ConnectionHandler | undefined;
 
 	// per-socket receive buffers (TCP is a stream)
 	private serverRecv = new WeakMap<net.Socket, Buffer>();
@@ -33,6 +36,14 @@ export class TCPNetworkingLayer implements NetworkLayer {
 
 	public setOnMessage(handler?: RawMessageHandler): void {
 		this.onMessage = handler;
+	}
+
+	public setOnConnection(handler?: ConnectionHandler): void {
+		this.onConnection = handler;
+	}
+
+	public setOnDisconnect(handler?: ConnectionHandler): void {
+		this.onDisconnect = handler;
 	}
 
 	public getState(): NetworkLayerState {
@@ -47,6 +58,8 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		this.server = net.createServer((socket) => {
 			this.clients.push(socket);
 			this.serverRecv.set(socket, Buffer.alloc(0));
+			const clientId = this.clients.length;
+			this.onConnection?.({ side: "server", clientId });
 
 			socket.on("data", (chunk: Buffer | string) => {
 				const clientId = this.clients.indexOf(socket) + 1;
@@ -54,6 +67,9 @@ export class TCPNetworkingLayer implements NetworkLayer {
 			});
 
 			socket.on("close", () => {
+				const clientIndex = this.clients.indexOf(socket);
+				const clientId = clientIndex >= 0 ? clientIndex + 1 : undefined;
+				this.onDisconnect?.({ side: "server", clientId });
 				this.clients = this.clients.filter((c) => c !== socket);
 				// WeakMap cleans itself up
 			});
@@ -65,7 +81,6 @@ export class TCPNetworkingLayer implements NetworkLayer {
 
 		this.server.listen(options.port, () => {
 			this.currentState = "server";
-			console.log(`Server listening on port ${options.port}`);
 
 			for (const data of this.sendQueue) this.send(data);
 			this.sendQueue = [];
@@ -147,6 +162,8 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		this.currentState = "disconnected";
 		this.clientRecv = Buffer.alloc(0);
 		this.onMessage = undefined;
+		this.onConnection = undefined;
+		this.onDisconnect = undefined;
 	}
 
 	private connectClient(options: ClientInitializationOptions): void {
@@ -156,7 +173,7 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		this.socket.connect(options.port, options.host, () => {
 			this.currentState = "client";
 			this.reconnectAttempts = 0;
-			console.log(`Connected to ${options.host}:${options.port}`);
+			this.onConnection?.({ side: "client" });
 
 			for (const data of this.sendQueue) this.send(data);
 			this.sendQueue = [];
@@ -170,6 +187,7 @@ export class TCPNetworkingLayer implements NetworkLayer {
 			this.currentState = "disconnected";
 			this.socket = undefined;
 			this.clientRecv = Buffer.alloc(0);
+			this.onDisconnect?.({ side: "client" });
 			this.scheduleReconnect();
 		});
 

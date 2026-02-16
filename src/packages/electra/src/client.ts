@@ -1,5 +1,6 @@
 import type {
 	ClientInitializationOptions,
+	HandlerMetaData,
 	Message,
 	NetworkLayer,
 	NetworkLayerState,
@@ -10,6 +11,8 @@ import { Action } from "./util";
 export class ElectraClient {
 	private networkingLayer: NetworkLayer;
 	public onMessage: Action<Message>;
+	public onConnection: Action;
+	public onDisconnect: Action;
 
 	constructor(
 		options: ClientInitializationOptions & { networkingLayer: NetworkLayer },
@@ -18,9 +21,19 @@ export class ElectraClient {
 		options.networkingLayer.startClient(options);
 
 		this.onMessage = new Action<Message>();
+		this.onConnection = new Action();
+		this.onDisconnect = new Action();
 
 		this.networkingLayer.setOnMessage((payload) => {
 			this.onMessage.invoke(deserialize(payload));
+		});
+
+		this.networkingLayer.setOnConnection(() => {
+			this.onConnection.invoke();
+		});
+
+		this.networkingLayer.setOnDisconnect(() => {
+			this.onDisconnect.invoke();
 		});
 	}
 
