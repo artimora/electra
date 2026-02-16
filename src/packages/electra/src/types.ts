@@ -22,6 +22,10 @@ export type ServerInitializationOptions = {
 export type ClientInitializationOptions = {
 	host: string;
 	port: number;
+	autoReconnect?: {
+		delayMs?: number;
+		maxAttempts?: number;
+	};
 };
 
 export type Message = {

@@ -2,9 +2,10 @@ import { ElectraClient, TCPNetworkingLayer } from "@artimora/electra";
 import { sleep } from "bun";
 
 const client = new ElectraClient({
-	networkingLayer: new TCPNetworkingLayer(),
 	host: "127.0.0.1",
 	port: 8080,
+	networkingLayer: new TCPNetworkingLayer(),
+	autoReconnect: { delayMs: 2000, maxAttempts: 10 },
 });
 
 client.onMessage.add((message) => {

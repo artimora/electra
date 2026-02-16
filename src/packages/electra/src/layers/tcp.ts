@@ -16,6 +16,10 @@ export class TCPNetworkingLayer implements NetworkLayer {
 
 	// client
 	private socket?: net.Socket | undefined;
+	private clientOptions?: ClientInitializationOptions | undefined;
+	private reconnectTimer?: NodeJS.Timeout | undefined;
+	private reconnectAttempts = 0;
+	private shouldReconnect = false;
 
 	// generic
 	private sendQueue: Uint8Array[] = [];
@@ -77,28 +81,11 @@ export class TCPNetworkingLayer implements NetworkLayer {
 			throw new Error("Cannot start client: already active.");
 		}
 
-		this.socket = new net.Socket();
-		this.clientRecv = Buffer.alloc(0);
-
-		this.socket.connect(options.port, options.host, () => {
-			this.currentState = "client";
-			console.log(`Connected to ${options.host}:${options.port}`);
-
-			for (const data of this.sendQueue) this.send(data);
-			this.sendQueue = [];
-		});
-
-		this.socket.on("data", (chunk: Buffer | string) => {
-			this.handleClientData(chunk);
-		});
-
-		this.socket.on("close", () => {
-			this.currentState = "disconnected";
-		});
-
-		this.socket.on("error", (err) => {
-			console.error("Client error:", err);
-		});
+		this.clientOptions = options;
+		this.shouldReconnect = Boolean(options.autoReconnect);
+		this.reconnectAttempts = 0;
+		this.clearReconnectTimer();
+		this.connectClient(options);
 	}
 
 	public send(data: Uint8Array): void {
@@ -140,6 +127,11 @@ export class TCPNetworkingLayer implements NetworkLayer {
 	}
 
 	public stop(): void {
+		this.shouldReconnect = false;
+		this.clearReconnectTimer();
+		this.clientOptions = undefined;
+		this.reconnectAttempts = 0;
+
 		if (this.currentState === "server") {
 			for (const client of this.clients) client.destroy();
 			this.server?.close();
@@ -155,6 +147,67 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		this.currentState = "disconnected";
 		this.clientRecv = Buffer.alloc(0);
 		this.onMessage = undefined;
+	}
+
+	private connectClient(options: ClientInitializationOptions): void {
+		this.socket = new net.Socket();
+		this.clientRecv = Buffer.alloc(0);
+
+		this.socket.connect(options.port, options.host, () => {
+			this.currentState = "client";
+			this.reconnectAttempts = 0;
+			console.log(`Connected to ${options.host}:${options.port}`);
+
+			for (const data of this.sendQueue) this.send(data);
+			this.sendQueue = [];
+		});
+
+		this.socket.on("data", (chunk: Buffer | string) => {
+			this.handleClientData(chunk);
+		});
+
+		this.socket.on("close", () => {
+			this.currentState = "disconnected";
+			this.socket = undefined;
+			this.clientRecv = Buffer.alloc(0);
+			this.scheduleReconnect();
+		});
+
+		this.socket.on("error", (err) => {
+			console.error("Client error:", err);
+			if (this.currentState !== "client") {
+				this.scheduleReconnect();
+			}
+		});
+	}
+
+	private scheduleReconnect(): void {
+		const options = this.clientOptions;
+		const config = options?.autoReconnect;
+		if (!this.shouldReconnect || !config || !options) return;
+		if (this.reconnectTimer) return;
+
+		const delayMs = Math.max(0, config.delayMs ?? 1000);
+		if (
+			config.maxAttempts !== undefined &&
+			this.reconnectAttempts >= config.maxAttempts
+		) {
+			return;
+		}
+
+		this.reconnectAttempts += 1;
+		this.reconnectTimer = setTimeout(() => {
+			this.reconnectTimer = undefined;
+			if (!this.shouldReconnect || this.currentState !== "disconnected") return;
+			if (!this.clientOptions) return;
+			this.connectClient(this.clientOptions);
+		}, delayMs);
+	}
+
+	private clearReconnectTimer(): void {
+		if (!this.reconnectTimer) return;
+		clearTimeout(this.reconnectTimer);
+		this.reconnectTimer = undefined;
 	}
 
 	// ---- framing ----
