@@ -1,6 +1,5 @@
 import type {
 	ClientInitializationOptions,
-	HandlerMetaData,
 	Message,
 	NetworkLayer,
 	NetworkLayerState,

@@ -13,6 +13,7 @@ export class Action<T = void> {
 
 	public invoke(...args: T extends void ? [] : [value: T]): void {
 		for (const callback of this.callbacks) {
+			// biome-ignore lint/suspicious/noExplicitAny: bweahhh felt like it :3
 			(callback as any)(...args);
 		}
 	}

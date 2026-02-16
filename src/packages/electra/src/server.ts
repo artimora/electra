@@ -1,6 +1,5 @@
 import type net from "node:net";
 import type {
-	HandlerMetaData,
 	Message,
 	NetworkLayer,
 	NetworkLayerState,
