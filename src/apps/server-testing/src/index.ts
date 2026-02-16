@@ -6,7 +6,19 @@ const server = new ElectraServer({
 	port: 8080,
 });
 
+server.onMessage.add((message) => {
+	console.log(
+		`Received message from client ${message.clientId}:`,
+		message.message,
+	);
+});
+
 while (true) {
-	server.sendToAllClients(new Uint8Array([Date.now()]));
+	server.sendToAllClients({
+		id: "testing:time",
+		values: {
+			time: `${Date.now()}`,
+		},
+	});
 	await sleep(1000);
 }

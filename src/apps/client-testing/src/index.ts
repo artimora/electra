@@ -7,7 +7,16 @@ const client = new ElectraClient({
 	port: 8080,
 });
 
+client.onMessage.add((message) => {
+	console.log("Received message:", message);
+});
+
 while (true) {
-	client.send(new Uint8Array([Date.now()]));
+	client.send({
+		id: "testing:time",
+		values: {
+			time: `${Date.now()}`,
+		},
+	});
 	await sleep(1000);
 }

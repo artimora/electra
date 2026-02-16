@@ -3,6 +3,7 @@ import type {
 	ClientInitializationOptions,
 	NetworkLayer,
 	NetworkLayerState,
+	RawMessageHandler,
 	ServerInitializationOptions,
 } from "@/types";
 
@@ -19,24 +20,38 @@ export class TCPNetworkingLayer implements NetworkLayer {
 	// generic
 	private sendQueue: Uint8Array[] = [];
 
-	getState(): NetworkLayerState {
+	// inbound "push up"
+	private onMessage?: RawMessageHandler | undefined;
+
+	// per-socket receive buffers (TCP is a stream)
+	private serverRecv = new WeakMap<net.Socket, Buffer>();
+	private clientRecv: Buffer = Buffer.alloc(0);
+
+	public setOnMessage(handler?: RawMessageHandler): void {
+		this.onMessage = handler;
+	}
+
+	public getState(): NetworkLayerState {
 		return this.currentState;
 	}
 
-	startServer(options: ServerInitializationOptions): void {
+	public startServer(options: ServerInitializationOptions): void {
 		if (this.currentState !== "disconnected") {
 			throw new Error("Cannot start server: already active.");
 		}
 
 		this.server = net.createServer((socket) => {
 			this.clients.push(socket);
+			this.serverRecv.set(socket, Buffer.alloc(0));
 
-			socket.on("data", (data) => {
-				console.log("Server received:", data);
+			socket.on("data", (chunk: Buffer | string) => {
+				const clientId = this.clients.indexOf(socket) + 1;
+				this.handleServerData(socket, chunk, clientId);
 			});
 
 			socket.on("close", () => {
 				this.clients = this.clients.filter((c) => c !== socket);
+				// WeakMap cleans itself up
 			});
 
 			socket.on("error", (err) => {
@@ -48,9 +63,7 @@ export class TCPNetworkingLayer implements NetworkLayer {
 			this.currentState = "server";
 			console.log(`Server listening on port ${options.port}`);
 
-			for (const data of this.sendQueue) {
-				this.send(data);
-			}
+			for (const data of this.sendQueue) this.send(data);
 			this.sendQueue = [];
 		});
 
@@ -59,25 +72,24 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		});
 	}
 
-	startClient(options: ClientInitializationOptions): void {
+	public startClient(options: ClientInitializationOptions): void {
 		if (this.currentState !== "disconnected") {
 			throw new Error("Cannot start client: already active.");
 		}
 
 		this.socket = new net.Socket();
+		this.clientRecv = Buffer.alloc(0);
 
 		this.socket.connect(options.port, options.host, () => {
 			this.currentState = "client";
 			console.log(`Connected to ${options.host}:${options.port}`);
 
-			for (const data of this.sendQueue) {
-				this.send(data);
-			}
+			for (const data of this.sendQueue) this.send(data);
 			this.sendQueue = [];
 		});
 
-		this.socket.on("data", (data) => {
-			console.log("Client received:", data);
+		this.socket.on("data", (chunk: Buffer | string) => {
+			this.handleClientData(chunk);
 		});
 
 		this.socket.on("close", () => {
@@ -89,50 +101,47 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		});
 	}
 
-	send(data: Uint8Array): void {
+	public send(data: Uint8Array): void {
+		const framed = this.frame(data);
+
 		if (this.currentState === "server") {
-			for (const client of this.clients) {
-				client.write(data);
-			}
+			for (const client of this.clients) client.write(framed);
 			return;
 		}
 
 		if (this.currentState === "client" && this.socket) {
-			this.socket.write(data);
+			this.socket.write(framed);
 			return;
 		}
 
 		if (this.currentState === "disconnected") {
-			this.sendQueue.push(data);
+			this.sendQueue.push(data); // store unframed, frame later
 			return;
 		}
 
 		throw new Error("Cannot send.");
 	}
 
-	sendToClient(clientId: number, data: Uint8Array): void {
+	public sendToClient(clientId: number, data: Uint8Array): void {
 		if (this.currentState !== "server") {
 			throw new Error("sendToClient only valid in server mode.");
 		}
 
 		const index = clientId - 1;
-
 		if (index < 0 || index >= this.clients.length) {
 			throw new Error("Invalid client ID");
 		}
 
-		this.clients[index]?.write(data);
+		this.clients[index]?.write(this.frame(data));
 	}
 
-	getClients(): net.Socket[] {
+	public getClients(): net.Socket[] {
 		return this.clients;
 	}
 
-	stop(): void {
+	public stop(): void {
 		if (this.currentState === "server") {
-			for (const client of this.clients) {
-				client.destroy();
-			}
+			for (const client of this.clients) client.destroy();
 			this.server?.close();
 		}
 
@@ -144,5 +153,70 @@ export class TCPNetworkingLayer implements NetworkLayer {
 		this.server = undefined;
 		this.socket = undefined;
 		this.currentState = "disconnected";
+		this.clientRecv = Buffer.alloc(0);
+		this.onMessage = undefined;
+	}
+
+	// ---- framing ----
+
+	private frame(payload: Uint8Array): Buffer {
+		const len = payload.byteLength;
+		const buf = Buffer.allocUnsafe(4 + len);
+		buf.writeUInt32BE(len, 0);
+		Buffer.from(payload).copy(buf, 4);
+		return buf;
+	}
+
+	private drainFrames(
+		buffer: Buffer,
+		emit: (payload: Uint8Array) => void,
+	): Buffer {
+		// Keep pulling: [4-byte length][payload]
+		let offset = 0;
+
+		while (buffer.length - offset >= 4) {
+			const msgLen = buffer.readUInt32BE(offset);
+			if (msgLen < 0) throw new Error("Invalid frame length");
+
+			const available = buffer.length - offset - 4;
+			if (available < msgLen) break; // wait for more data
+
+			const start = offset + 4;
+			const end = start + msgLen;
+
+			const payload = buffer.subarray(start, end);
+			emit(new Uint8Array(payload));
+
+			offset = end;
+		}
+
+		return offset === 0 ? buffer : buffer.subarray(offset);
+	}
+
+	private handleServerData(
+		socket: net.Socket,
+		chunk: Buffer | string,
+		clientId: number,
+	) {
+		const buf = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
+
+		const prev = this.serverRecv.get(socket) ?? Buffer.alloc(0);
+		const next = Buffer.concat([prev, buf]);
+
+		const remaining = this.drainFrames(next, (payload) => {
+			this.onMessage?.(payload, { side: "server", clientId });
+		});
+
+		this.serverRecv.set(socket, remaining);
+	}
+
+	private handleClientData(chunk: Buffer | string) {
+		const buf = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
+
+		this.clientRecv = Buffer.concat([this.clientRecv, buf]);
+
+		this.clientRecv = this.drainFrames(this.clientRecv, (payload) => {
+			this.onMessage?.(payload, { side: "client" });
+		});
 	}
 }

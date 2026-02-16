@@ -11,6 +11,8 @@ export interface NetworkLayer {
 
 	sendToClient(clientId: number, data: Uint8Array): void;
 	getClients(): net.Socket[];
+
+	setOnMessage(handler?: RawMessageHandler): void;
 }
 
 export type ServerInitializationOptions = {
@@ -21,3 +23,13 @@ export type ClientInitializationOptions = {
 	host: string;
 	port: number;
 };
+
+export type Message = {
+	id: `${string}:${string}`;
+	values: { [key: string]: string };
+};
+
+export type RawMessageHandler = (
+	payload: Uint8Array,
+	meta: { side: "server" | "client"; clientId?: number },
+) => void;
