@@ -1,6 +1,8 @@
 import type net from "node:net";
 export type NetworkLayerState = "server" | "client" | "disconnected";
 
+export type HandlerSide = "server" | "client";
+
 export interface NetworkLayer {
 	getState(): NetworkLayerState;
 	send(data: Uint8Array): void;
@@ -17,13 +19,19 @@ export interface NetworkLayer {
 	setOnDisconnect(handler?: ConnectionHandler): void;
 }
 
-export type ServerInitializationOptions = {
+export interface BaseInitializationOptions {
+	port: number;
+	tickDelay?: number;
+	functionTimeout?: number;
+	functionHandler?: FunctionHandler;
+}
+
+export type ServerInitializationOptions = BaseInitializationOptions & {
 	port: number;
 };
 
-export type ClientInitializationOptions = {
+export type ClientInitializationOptions = BaseInitializationOptions & {
 	host: string;
-	port: number;
 	autoReconnect?: {
 		delayMs?: number;
 		maxAttempts?: number;
@@ -35,6 +43,27 @@ export type Message = {
 	values: { [key: string]: string };
 };
 
+export type FunctionSenderData = {
+	targetSide: HandlerSide;
+	messageContents: Message;
+	targetClient: number;
+};
+
+export type FunctionHandler = {
+	setOptions(newOptions: BaseInitializationOptions): void;
+	onMessage(client: number, message: Message): void;
+	registerMessageSender(sender: (data: FunctionSenderData) => void): void;
+	callFunction(
+		functionName: string,
+		args: { [key: string]: string },
+	): Promise<{ [key: string]: string }>;
+	registerFunction(
+		functionName: string,
+		func: (args: { [key: string]: string }) => { [key: string]: string },
+		forceSet?: boolean,
+	): void;
+};
+
 export type RawMessageHandler = (
 	payload: Uint8Array,
 	meta: HandlerMetaData,
@@ -43,6 +72,6 @@ export type RawMessageHandler = (
 export type ConnectionHandler = (meta: HandlerMetaData) => void;
 
 export type HandlerMetaData = {
-	side: "server" | "client";
+	side: HandlerSide;
 	clientId?: number | undefined;
 };
