@@ -9,5 +9,10 @@ export function serialize(message: Message): Uint8Array {
 
 export function deserialize(data: Uint8Array): Message {
 	const json = new TextDecoder().decode(data);
-	return JSON.parse(json);
+	const parsed = JSON.parse(json) as Partial<Message>;
+
+	return {
+		id: (parsed.id ?? "artimora:invalid") as Message["id"],
+		values: parsed.values ?? {},
+	};
 }
