@@ -28,7 +28,6 @@ export class ElectraServer {
 		};
 
 		this.networkingLayer = options.networkingLayer;
-		this.networkingLayer.startServer(options);
 		this.functions = options.functionHandler ?? new GenericFunctionHandler("server");
 		this.functions.setOptions(resolvedOptions);
 
@@ -87,6 +86,8 @@ export class ElectraServer {
 			// biome-ignore lint/style/noNonNullAssertion: we are 100% sure we're on the server in this code lol
 			this.onClientDisconnect.invoke(meta.clientId!);
 		});
+
+		this.networkingLayer.startServer(options);
 	}
 
 	public sendToClient(clientId: number, message: Message): void {

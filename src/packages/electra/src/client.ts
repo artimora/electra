@@ -28,7 +28,6 @@ export class ElectraClient {
 		};
 
 		this.networkingLayer = options.networkingLayer;
-		options.networkingLayer.startClient(options);
 		this.functions = options.functionHandler ?? new GenericFunctionHandler("client");
 		this.functions.setOptions(resolvedOptions);
 
@@ -72,6 +71,8 @@ export class ElectraClient {
 		this.networkingLayer.setOnDisconnect(() => {
 			this.onDisconnect.invoke();
 		});
+
+		this.networkingLayer.startClient(options);
 	}
 
 	public send(message: Message): void {
