@@ -4,28 +4,37 @@ import { sleep } from "bun";
 const client = new ElectraClient({
 	host: "127.0.0.1",
 	port: 8080,
+	functionTimeout: 1000,
 	networkingLayer: new TCPNetworkingLayer(),
-	autoReconnect: { delayMs: 2000, maxAttempts: 10 },
+	autoReconnect: { delayMs: 100, maxAttempts: 5 },
 });
 
 client.onMessage.add((message) => {
-	console.log("Received message:", message);
+	console.log(message.id);
 });
 
 client.onConnection.add(() => {
-	console.log("Connected to server");
+	console.log("Connected");
 });
 
 client.onDisconnect.add(() => {
-	console.log("Disconnected from server");
+	console.log("Disconnected");
 });
 
 while (true) {
-	client.send({
-		id: "testing:time",
-		values: {
-			time: `${Date.now()}`,
-		},
+	const left = 1;
+	const right = 2;
+
+	const results = await client.callFunction("addition", {
+		left: `${left}`,
+		right: `${right}`,
 	});
+
+	if (results.result) {
+		console.log(`${left} + ${right} = ${results.result}`);
+	} else {
+		console.error(`Couldn't get result. Error value: ${results["artimora:error"]}`);
+	}
+
 	await sleep(1000);
 }
