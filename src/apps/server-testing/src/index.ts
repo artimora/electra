@@ -18,12 +18,14 @@ server.onClientDisconnect.add((clientId) => {
 	console.log(`${clientId} disconnected`);
 });
 
-server.registerFunction("addition", (args) => {
+server.registerFunction("addition", async (args) => {
 	const workTime = Math.floor(Math.random() * (1500 - 250 + 1)) + 250;
 	const until = Date.now() + workTime;
 	while (Date.now() < until) {
 		// intentionally block to test client timeout behavior
 	}
+
+	await sleep(workTime);
 
 	console.log(`sleep: ${workTime}`);
 

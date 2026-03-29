@@ -1,15 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type {
 	BaseInitializationOptions,
+	FunctionCallback,
 	FunctionHandler,
 	FunctionSenderData,
 	HandlerSide,
 	Message,
 } from "@/types";
-
-type FunctionCallback = (args: { [key: string]: string }) => {
-	[key: string]: string;
-};
 
 type PendingResult = {
 	resolve: (value: { [key: string]: string }) => void;
@@ -39,8 +36,8 @@ export class GenericFunctionHandler implements FunctionHandler {
 
 	public onMessage(client: number, message: Message): void {
 		if (message.id === "artimora:function_call") {
-			queueMicrotask(() => {
-				this.handleFunctionCall(client, message);
+			queueMicrotask(async () => {
+				await this.handleFunctionCall(client, message);
 			});
 			return;
 		}
@@ -64,7 +61,9 @@ export class GenericFunctionHandler implements FunctionHandler {
 		pending.resolve({ ...message.values });
 	}
 
-	public registerMessageSender(sender: (data: FunctionSenderData) => void): void {
+	public registerMessageSender(
+		sender: (data: FunctionSenderData) => void,
+	): void {
 		this.messageSender = sender;
 	}
 
@@ -88,7 +87,8 @@ export class GenericFunctionHandler implements FunctionHandler {
 			values: payload,
 		};
 
-		const targetSide: HandlerSide = this.side === "client" ? "server" : "client";
+		const targetSide: HandlerSide =
+			this.side === "client" ? "server" : "client";
 
 		return new Promise((resolve, reject) => {
 			const timeoutMs = Math.max(0, this.options.functionTimeout ?? 8000);
@@ -141,8 +141,12 @@ export class GenericFunctionHandler implements FunctionHandler {
 		this.functions.set(functionName, func);
 	}
 
-	private handleFunctionCall(client: number, message: Message): void {
-		const targetSide: HandlerSide = this.side === "client" ? "server" : "client";
+	private async handleFunctionCall(
+		client: number,
+		message: Message,
+	): Promise<void> {
+		const targetSide: HandlerSide =
+			this.side === "client" ? "server" : "client";
 
 		const functionName = message.values["artimora:function_name"];
 		const functionReturnId = message.values["artimora:function_return_id"];
@@ -171,7 +175,7 @@ export class GenericFunctionHandler implements FunctionHandler {
 
 		let results: { [key: string]: string };
 		try {
-			results = func({ ...message.values });
+			results = await func({ ...message.values });
 		} catch (error) {
 			console.error(`Function '${functionName}' failed:`, error);
 			results = {

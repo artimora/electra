@@ -6,8 +6,8 @@ import type {
 	NetworkLayer,
 	NetworkLayerState,
 } from "@/types";
-import { deserialize, serialize } from "./messages";
 import { GenericFunctionHandler } from "./functions";
+import { deserialize, serialize } from "./messages";
 import { Action } from "./util";
 
 export class ElectraClient {
@@ -28,7 +28,8 @@ export class ElectraClient {
 		};
 
 		this.networkingLayer = options.networkingLayer;
-		this.functions = options.functionHandler ?? new GenericFunctionHandler("client");
+		this.functions =
+			options.functionHandler ?? new GenericFunctionHandler("client");
 		this.functions.setOptions(resolvedOptions);
 
 		this.onMessage = new Action<Message>();

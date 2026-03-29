@@ -59,10 +59,18 @@ export type FunctionHandler = {
 	): Promise<{ [key: string]: string }>;
 	registerFunction(
 		functionName: string,
-		func: (args: { [key: string]: string }) => { [key: string]: string },
+		func: FunctionCallback,
 		forceSet?: boolean,
 	): void;
 };
+
+export type FunctionCallback = (args: {
+	[key: string]: string;
+}) => PotentialPromise<{
+	[key: string]: string;
+}>;
+
+export type PotentialPromise<T> = T | Promise<T>;
 
 export type RawMessageHandler = (
 	payload: Uint8Array,

@@ -1,13 +1,14 @@
 import type net from "node:net";
 import type {
+	FunctionCallback,
 	FunctionHandler,
 	Message,
 	NetworkLayer,
 	NetworkLayerState,
 	ServerInitializationOptions,
 } from "@/types";
-import { deserialize, serialize } from "./messages";
 import { GenericFunctionHandler } from "./functions";
+import { deserialize, serialize } from "./messages";
 import { Action } from "./util";
 
 export class ElectraServer {
@@ -28,7 +29,8 @@ export class ElectraServer {
 		};
 
 		this.networkingLayer = options.networkingLayer;
-		this.functions = options.functionHandler ?? new GenericFunctionHandler("server");
+		this.functions =
+			options.functionHandler ?? new GenericFunctionHandler("server");
 		this.functions.setOptions(resolvedOptions);
 
 		this.onMessage = new Action<{ message: Message; clientId: number }>();
@@ -99,7 +101,9 @@ export class ElectraServer {
 	}
 
 	public getClientIdentities(): Array<string | null> {
-		return this.getClients().map((_, i) => this.clientIdentities.get(i + 1) ?? null);
+		return this.getClients().map(
+			(_, i) => this.clientIdentities.get(i + 1) ?? null,
+		);
 	}
 
 	public getClientIdentity(clientId: number): string | null {
@@ -129,7 +133,7 @@ export class ElectraServer {
 
 	public registerFunction(
 		functionName: string,
-		func: (args: { [key: string]: string }) => { [key: string]: string },
+		func: FunctionCallback,
 		forceSet = false,
 	): void {
 		this.functions.registerFunction(functionName, func, forceSet);
