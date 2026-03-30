@@ -1,7 +1,7 @@
 {
 	"name": "@artimora/electra",
 	"description": "simple (and thin) message based networking library",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"type": "module",
 	"files": [
 		"dist"
