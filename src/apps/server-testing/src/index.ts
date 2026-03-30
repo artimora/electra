@@ -20,10 +20,6 @@ server.onClientDisconnect.add((clientId) => {
 
 server.registerFunction("addition", async (args) => {
 	const workTime = Math.floor(Math.random() * (1500 - 250 + 1)) + 250;
-	const until = Date.now() + workTime;
-	while (Date.now() < until) {
-		// intentionally block to test client timeout behavior
-	}
 
 	await sleep(workTime);
 
